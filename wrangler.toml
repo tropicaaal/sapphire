@@ -7,8 +7,11 @@ command = "cargo install -q \"worker-build@^0.8\" && worker-build --release --pa
 
 [triggers]
 crons = [
-    "*/20 * * * *", # every 20 mins to collect messages
-    "* */6 * * *", # every 10 hours for sending markovs
+    "*/20 13-23,0-6 * * *", # message collection every 20 mins in daylight hours
+    "0 7,9,11 * * *", # message collection every 2 hours at night 
+    "0 */6 * * *", # send markovs every 6 hours
+    "0 */12 * * *", # prune every 12 hours
+    # "* * * * *", # send markovs every minute
 ]
 
 [observability]

@@ -1,8 +1,10 @@
+use markov_str::MarkovChain;
+use regex::Regex;
 use twilight_model::channel::{message::MessageType, Message};
 use worker::D1Database;
 
-pub fn one_week_ago_micros() -> i64 {
-    worker::Date::now().as_millis() as i64 * 1000 - (7 * 24 * 60 * 60 * 1_000_000)
+pub fn cutoff_date() -> i64 {
+    worker::Date::now().as_millis() as i64 * 1000 - ((7 * 24 * 60 * 60 * 1_000_000) * 2)
 }
 
 pub struct MessageDatabase {
@@ -36,7 +38,7 @@ impl MessageDatabase {
     }
 
     pub async fn prune_old_messages(&mut self) -> worker::Result<usize> {
-        let one_week_ago = one_week_ago_micros();
+        let one_week_ago = cutoff_date();
 
         let result = self
             .db
@@ -56,7 +58,7 @@ impl MessageDatabase {
 
     pub async fn save_messages(&self, messages: &[Message]) -> worker::Result<usize> {
         let mut statements = Vec::with_capacity(messages.len());
-        let one_week_ago = one_week_ago_micros();
+        let one_week_ago = cutoff_date();
         for msg in messages {
             if msg.content.is_empty()
                 || msg.application_id.is_some()
@@ -74,7 +76,9 @@ impl MessageDatabase {
             for embed in &msg.embeds {
                 if let Some(desc) = &embed.description {
                     content.push_str(" ");
-                    content.push_str(desc);
+                    // filters out hyperlinks containing emoji
+                    let hyperlinked_emoji = Regex::new(r"\[:[A-Za-z0-9_]+:\]\([^)]*\)").unwrap();
+                    content.push_str(&hyperlinked_emoji.replace_all(desc, ""));
                 }
             }
 
@@ -102,7 +106,7 @@ impl MessageDatabase {
         Ok(inserted)
     }
 
-    pub async fn load_corpus(&self, max_messages: usize) -> worker::Result<Vec<String>> {
+    pub async fn load_corpus(&self, max_messages: usize, chain: &mut MarkovChain) -> worker::Result<usize> {
         let stmt = self
             .db
             .prepare("SELECT content FROM messages ORDER BY created_at DESC LIMIT ?1")
@@ -110,10 +114,12 @@ impl MessageDatabase {
 
         let results = stmt.all().await?;
         let rows: Vec<serde_json::Value> = results.results()?;
+        let count = rows.len();
 
-        Ok(rows
-            .into_iter()
-            .filter_map(|r| r.get("content").and_then(|c| c.as_str().map(String::from)))
-            .collect())
+        for row in rows {
+            chain.add_text(&row.get("content").unwrap().to_string());
+        }
+
+        Ok(count)
     }
 }

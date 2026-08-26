@@ -23,7 +23,7 @@ pub const TOKEN_REGEX: &str = r#"(?xm)
   | <\#\d+> # channel mention <#id>
   | :[\p{Alphabetic}\p{N}_]+: # emoji shortcode :name:
   | https?://[^\s<>]+ # links
-  | \*\*[^*\n]+\*\* # **bold**
+  # | \*\*[^*\n]+\*\* # **bold**
   | \*[^*\n]+\* # *italics*
   | __[^_\n]+__ # __underline__
   | _[^_\n]+_ # _italics_
@@ -64,8 +64,12 @@ async fn scheduled(event: ScheduledEvent, env: Env, _ctx: ScheduleContext) {
     log::info!("\nrunning cron job: {}", event.cron());
 
     match event.cron().as_str() {
-        "*/20 * * * *" => update_db(&mut bot, &mut db).await,
-        "* */6 * * *" => do_markov(&mut bot, &mut db).await,
+        "*/20 13-23,0-6 * * *" | "0 7,9,11 * * *" => update_db(&mut bot, &mut db).await,
+        "* * * * *" | "0 */6 * * *" => do_markov(&mut bot, &mut db).await,
+        "0 */12 * * *" => match db.prune_old_messages().await {
+            Ok(n) => log::info!("[db] pruned {n} old messages"),
+            Err(e) => log::error!("[db] failed to prune old messages: {e}"),
+        },
         // when running under wrangler dev, cron jobs are manually triggered and don't
         // provide any useful metadata so we can't just wildcard to an unreachable guh
         _ => {
@@ -82,11 +86,6 @@ async fn update_db(bot: &mut Bot, db: &mut MessageDatabase) {
         }
 
         Delay::from(std::time::Duration::from_millis(300)).await;
-    }
-
-    match db.prune_old_messages().await {
-        Ok(n) => log::info!("[db] pruned {n} old messages"),
-        Err(e) => log::error!("[db] failed to prune old messages: {e}"),
     }
 }
 
@@ -166,7 +165,7 @@ async fn sync_channel(
         db.set_state(&before_key, &oldest.id.get().to_string())
             .await?;
 
-        let hit_cutoff = (oldest.timestamp.as_micros() as i64) < db::one_week_ago_micros();
+        let hit_cutoff = (oldest.timestamp.as_micros() as i64) < db::cutoff_date();
         let hit_channel_start = messages.len() < 100;
 
         if hit_cutoff || hit_channel_start {
@@ -178,24 +177,15 @@ async fn sync_channel(
 }
 
 async fn do_markov(bot: &mut Bot, db: &mut MessageDatabase) {
-    let n_pruned = db.prune_old_messages().await.unwrap();
-    if n_pruned > 0 {
-        log::info!("[db] Pruned {n_pruned} messages from D1");
-    }
+    let mut chain = MarkovChain::with_capacity(2, 4096, regex::Regex::new(TOKEN_REGEX).unwrap());
+    let corpus_len = db.load_corpus(2048, &mut chain).await.unwrap();
+    log::info!("[db] Loaded corpus of size {}", corpus_len);
 
-    let corpus = db.load_corpus(2048).await.unwrap();
-    log::info!("[db] Loaded corpus of size {}", corpus.len());
-
-    let mut chain =
-        MarkovChain::with_capacity(2, 8_000_000, regex::Regex::new(TOKEN_REGEX).unwrap());
-    for sentence in corpus {
-        chain.add_text(&sentence);
-    }
-
-    for _ in 0..rand::Rng::gen_range(&mut rand::thread_rng(), 1..3) {
+    let message_count = rand::Rng::gen_range(&mut rand::thread_rng(), 1..3);
+    for _ in 0..message_count {
         Delay::from(Duration::from_millis(rand::Rng::gen_range(
             &mut rand::thread_rng(),
-            0..400,
+            400..1400,
         )))
         .await;
 

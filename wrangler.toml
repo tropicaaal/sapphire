@@ -1,0 +1,21 @@
+name = "sapphire-discord-bot"
+main = "build/index.js"
+compatibility_date = "2026-08-25"
+
+[build]
+command = "cargo install -q \"worker-build@^0.8\" && worker-build --release --panic-unwind"
+
+[triggers]
+crons = [
+    "*/20 * * * *", # every 20 mins to collect messages
+    "* */6 * * *", # every 10 hours for sending markovs
+]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[[d1_databases]]
+binding = "sapphire_messages"
+database_name = "sapphire-messages"
+database_id = "3690e4c3-bad6-4329-9b24-e0b0a15f0ebf"

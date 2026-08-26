@@ -1,5 +1,7 @@
 //! Hi
 
+use std::time::Duration;
+
 use markov_str::MarkovChain;
 use twilight_model::id::{marker::ChannelMarker, Id};
 use worker::*;
@@ -79,7 +81,7 @@ async fn update_db(bot: &mut Bot, db: &mut MessageDatabase) {
             log::error!("[bot] failed to sync channel {channel}: {e}");
         }
 
-        worker::Delay::from(std::time::Duration::from_millis(300)).await;
+        Delay::from(std::time::Duration::from_millis(300)).await;
     }
 
     match db.prune_old_messages().await {
@@ -190,11 +192,19 @@ async fn do_markov(bot: &mut Bot, db: &mut MessageDatabase) {
         chain.add_text(&sentence);
     }
 
-    if let Some(msg) = &chain.generate(
-        rand::Rng::gen_range(&mut rand::thread_rng(), 2..25),
-        &mut rand::thread_rng(),
-    ) {
-        log::info!("[bot] Sending markov: {msg}");
-        bot.create_message(GAMING_PUNISHMENT, &msg).await.unwrap();
+    for _ in 0..rand::Rng::gen_range(&mut rand::thread_rng(), 1..3) {
+        Delay::from(Duration::from_millis(rand::Rng::gen_range(
+            &mut rand::thread_rng(),
+            0..400,
+        )))
+        .await;
+
+        if let Some(msg) = &chain.generate(
+            rand::Rng::gen_range(&mut rand::thread_rng(), 2..25),
+            &mut rand::thread_rng(),
+        ) {
+            log::info!("[bot] Sending markov: {msg}");
+            bot.create_message(GAMING_PUNISHMENT, &msg).await.unwrap();
+        }
     }
 }

@@ -1,5 +1,5 @@
 use twilight_model::channel::{message::MessageType, Message};
-use worker::*;
+use worker::D1Database;
 
 pub fn one_week_ago_micros() -> i64 {
     worker::Date::now().as_millis() as i64 * 1000 - (7 * 24 * 60 * 60 * 1_000_000)
@@ -14,7 +14,7 @@ impl MessageDatabase {
         Self { db }
     }
 
-    pub async fn get_state(&mut self, key: &str) -> Result<Option<String>> {
+    pub async fn get_state(&mut self, key: &str) -> worker::Result<Option<String>> {
         let stmt = self
             .db
             .prepare("SELECT value FROM state WHERE key = ?1")
@@ -23,7 +23,7 @@ impl MessageDatabase {
         Ok(result.and_then(|v| v.as_str().map(String::from)))
     }
 
-    pub async fn set_state(&mut self, key: &str, value: &str) -> Result<()> {
+    pub async fn set_state(&mut self, key: &str, value: &str) -> worker::Result<()> {
         self.db
             .prepare(
                 "INSERT INTO state (key, value) VALUES (?1, ?2)
@@ -35,7 +35,7 @@ impl MessageDatabase {
         Ok(())
     }
 
-    pub async fn prune_old_messages(&mut self) -> Result<usize> {
+    pub async fn prune_old_messages(&mut self) -> worker::Result<usize> {
         let one_week_ago = one_week_ago_micros();
 
         let result = self
@@ -54,7 +54,7 @@ impl MessageDatabase {
         Ok(deleted)
     }
 
-    pub async fn save_messages(&self, messages: &[Message]) -> Result<usize> {
+    pub async fn save_messages(&self, messages: &[Message]) -> worker::Result<usize> {
         let mut statements = Vec::with_capacity(messages.len());
         let one_week_ago = one_week_ago_micros();
         for msg in messages {
@@ -102,7 +102,7 @@ impl MessageDatabase {
         Ok(inserted)
     }
 
-    pub async fn load_corpus(&self, max_messages: usize) -> Result<Vec<String>> {
+    pub async fn load_corpus(&self, max_messages: usize) -> worker::Result<Vec<String>> {
         let stmt = self
             .db
             .prepare("SELECT content FROM messages ORDER BY created_at DESC LIMIT ?1")

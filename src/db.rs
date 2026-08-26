@@ -106,7 +106,11 @@ impl MessageDatabase {
         Ok(inserted)
     }
 
-    pub async fn load_corpus(&self, max_messages: usize, chain: &mut MarkovChain) -> worker::Result<usize> {
+    pub async fn load_corpus(
+        &self,
+        max_messages: usize,
+        chain: &mut MarkovChain,
+    ) -> worker::Result<usize> {
         let stmt = self
             .db
             .prepare("SELECT content FROM messages ORDER BY created_at DESC LIMIT ?1")

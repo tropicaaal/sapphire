@@ -75,16 +75,25 @@ impl MessageDatabase {
             let mut content = msg.content.clone();
             for embed in &msg.embeds {
                 if let Some(desc) = &embed.description {
-                    content.push_str(" ");
                     // filters out hyperlinks containing emoji
                     let hyperlinked_emoji = Regex::new(r"\[:[A-Za-z0-9_]+:\]\([^)]*\)").unwrap();
-                    content.push_str(&hyperlinked_emoji.replace_all(desc, ""));
+                    let filtered_description = hyperlinked_emoji.replace_all(desc, "");
+                    
+                    if !filtered_description.is_empty() {
+                        content.push_str(" ");
+                        content.push_str(&filtered_description);
+                    }
                 }
             }
 
             // filter out role and user pings from dataset
             let ping_regex = Regex::new(r"<@!?\d+>|<@&\d+>").unwrap();
             content = ping_regex.replace_all(content.as_str(), "").to_string();
+            
+            // happens if the message was only a ping
+            if content.is_empty() {
+                continue;
+            }
 
             let stmt = self.db
                 .prepare("INSERT OR IGNORE INTO messages (discord_id, content, created_at) VALUES (?1, ?2, ?3)")

@@ -82,6 +82,10 @@ impl MessageDatabase {
                 }
             }
 
+            // filter out role and user pings from dataset
+            let ping_regex = Regex::new(r"<@!?\d+>|<@&\d+>").unwrap();
+            content = ping_regex.replace_all(content.as_str(), "").to_string();
+
             let stmt = self.db
                 .prepare("INSERT OR IGNORE INTO messages (discord_id, content, created_at) VALUES (?1, ?2, ?3)")
                 .bind(&[

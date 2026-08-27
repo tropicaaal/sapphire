@@ -135,10 +135,8 @@ async fn sync_channel(
     }
 
     // set the backfill cursor on first run so we don't immediately re-fetch the same page
-    if is_first_run {
-        if let Some(min_id) = first_batch_min_id {
-            db.set_state(&before_key, &min_id.to_string()).await?;
-        }
+    if is_first_run && let Some(min_id) = first_batch_min_id {
+        db.set_state(&before_key, &min_id.to_string()).await?;
     }
 
     // now we backfill until we hit week-old messages. this only needs to be
@@ -193,6 +191,10 @@ async fn do_markov(bot: &mut Bot, db: &mut MessageDatabase) {
             rand::Rng::gen_range(&mut rand::thread_rng(), 2..25),
             &mut rand::thread_rng(),
         ) {
+            // temporary for this week until dataset gets updated.
+            let ping_regex = regex::Regex::new(r"<@!?\d+>|<@&\d+>").unwrap();
+            let msg = ping_regex.replace_all(msg.as_str(), "").to_string();
+
             log::info!("[bot] Sending markov: {msg}");
             bot.create_message(GAMING_PUNISHMENT, &msg).await.unwrap();
         }

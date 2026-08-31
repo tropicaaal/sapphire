@@ -140,7 +140,7 @@ async fn sync_channel(
     }
 
     // now we backfill until we hit week-old messages. this only needs to be
-    // done once per-channel because  (assuming cron jobs keep running) pruning
+    // done once per-channel because (assuming cron jobs keep running) pruning
     // will always keep a 7-day window. we use the shitty kv state store to
     // set a permanent flag per-channel to remember that we've done this across
     // runs. ok bye
@@ -192,8 +192,10 @@ async fn do_markov(bot: &mut Bot, db: &mut MessageDatabase) {
             &mut rand::thread_rng(),
         ) {
             // temporary for this week until dataset gets updated.
+            let hyperlink_regex = regex::Regex::new(r"\[[^\]]*\]\([^)]*\)").unwrap();
             let ping_regex = regex::Regex::new(r"<@!?\d+>|<@&\d+>").unwrap();
             let msg = ping_regex.replace_all(msg.as_str(), "").to_string();
+            let msg = hyperlink_regex.replace_all(msg.as_str(), "").to_string();
 
             log::info!("[bot] Sending markov: {msg}");
             bot.create_message(GAMING_PUNISHMENT, &msg).await.unwrap();

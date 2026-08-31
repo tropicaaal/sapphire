@@ -75,9 +75,8 @@ impl MessageDatabase {
             let mut content = msg.content.clone();
             for embed in &msg.embeds {
                 if let Some(desc) = &embed.description {
-                    // filters out hyperlinks containing emoji
-                    let hyperlinked_emoji = Regex::new(r"\[:[A-Za-z0-9_]+:\]\([^)]*\)").unwrap();
-                    let filtered_description = hyperlinked_emoji.replace_all(desc, "");
+                    // filters out hyperlinks
+                    let filtered_description = hyperlink_regex.replace_all(desc, "");
                     
                     if !filtered_description.is_empty() {
                         content.push_str(" ");

@@ -12,4 +12,5 @@ I GOT BIG PLANS I TELL YOU!! BIG PLANS!!!!!
 
 ## ALIEXPRESS HATRED SECTION
 
-<img width="368" height="108" alt="image" src="https://github.com/user-attachments/assets/9c3cb7a4-8802-42d2-ad03-ad919a3f324a" />
+<img width="400" height="290" alt="at least its freenow" src="https://github.com/user-attachments/assets/f25c8514-5931-4153-8c13-2c9dd11fba6d" />
+<img width="368" height="108" alt="GIVE ME MY ESP32" src="https://github.com/user-attachments/assets/9c3cb7a4-8802-42d2-ad03-ad919a3f324a" />
